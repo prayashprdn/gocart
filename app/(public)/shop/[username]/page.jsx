@@ -15,9 +15,19 @@ export default function StoreShop() {
     const [loading, setLoading] = useState(true)
 
     const fetchStoreData = async () => {
-        setStoreInfo(dummyStoreData)
-        setProducts(productDummyData)
-        setLoading(false)
+        try {
+            const res = await fetch('/api/store/' + username)
+            const data = await res.json()
+            if (data.success) {
+                setStoreInfo(data.store)
+                setProducts(data.products)
+            }
+        } catch {
+            setStoreInfo(dummyStoreData)
+            setProducts(productDummyData)
+        } finally {
+            setLoading(false)
+        }
     }
 
     useEffect(() => {

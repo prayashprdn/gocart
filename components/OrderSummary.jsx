@@ -4,9 +4,11 @@ import AddressModal from './AddressModal';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/lib/auth';
 
 const OrderSummary = ({ totalPrice, items }) => {
 
+    const { user } = useUser();
     const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
 
     const router = useRouter();
@@ -21,13 +23,81 @@ const OrderSummary = ({ totalPrice, items }) => {
 
     const handleCouponCode = async (event) => {
         event.preventDefault();
-        
+        try {
+            const res = await fetch(`/api/coupon/check?code=${couponCodeInput}`)
+            const data = await res.json()
+            if (!data.success) throw new Error(data.message)
+            setCoupon(data.coupon)
+            toast.success(`Coupon applied! ${data.coupon.discount}% off`)
+        } catch (err) {
+            toast.error(err.message)
+            throw err
+        }
     }
 
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
 
-        router.push('/orders')
+        if (!selectedAddress) {
+            return toast.error('Please select a delivery address')
+        }
+        if (items.length === 0) {
+            return toast.error('Your cart is empty')
+        }
+
+        try {
+            const discount = coupon ? (coupon.discount / 100) * totalPrice : 0
+            const finalTotal = parseFloat((totalPrice - discount).toFixed(2))
+
+            // Group items by storeId — create one order per store
+            const storeGroups = {}
+            for (const item of items) {
+                const sid = item.storeId
+                if (!storeGroups[sid]) storeGroups[sid] = []
+                storeGroups[sid].push(item)
+            }
+
+            for (const [storeId, storeItems] of Object.entries(storeGroups)) {
+                const storeTotal = storeItems.reduce((s, i) => s + i.price * i.quantity, 0)
+                const storeDiscount = coupon ? (coupon.discount / 100) * storeTotal : 0
+
+                const res = await fetch('/api/order/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: user?.id || 'user_guest',
+                        userInfo: {
+                            name: user?.fullName || 'Guest User',
+                            email: user?.primaryEmailAddress?.emailAddress || 'guest@gocart.local',
+                            image: user?.imageUrl || ''
+                        },
+                        storeId,
+                        // Pass the full address object — the API will create it in the DB
+                        address: {
+                            name: selectedAddress.name,
+                            email: selectedAddress.email,
+                            street: selectedAddress.street,
+                            city: selectedAddress.city,
+                            state: selectedAddress.state,
+                            zip: selectedAddress.zip,
+                            country: selectedAddress.country,
+                            phone: selectedAddress.phone,
+                        },
+                        items: storeItems.map((i) => ({ productId: i.id, name: i.name, description: i.description, category: i.category, images: i.images, quantity: i.quantity, price: i.price })),
+                        total: parseFloat((storeTotal - storeDiscount).toFixed(2)),
+                        paymentMethod,
+                        coupon: coupon ? { code: coupon.code, discount: coupon.discount } : null,
+                    }),
+                })
+                const data = await res.json()
+                if (!data.success) throw new Error(data.message)
+            }
+
+            router.push('/orders')
+        } catch (err) {
+            toast.error(err.message)
+            throw err
+        }
     }
 
     return (

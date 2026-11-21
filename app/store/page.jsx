@@ -6,8 +6,11 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
+import { useStore } from "@/components/store/StoreLayout"
+
 export default function Dashboard() {
 
+    const { storeId } = useStore()
     const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
 
     const router = useRouter()
@@ -28,8 +31,16 @@ export default function Dashboard() {
     ]
 
     const fetchDashboardData = async () => {
-        setDashboardData(dummyStoreDashboardData)
-        setLoading(false)
+        try {
+            const effectiveStoreId = storeId || "seller_1"
+            const res = await fetch(`/api/store/dashboard?storeId=${effectiveStoreId}`)
+            const data = await res.json()
+            if (data.success) setDashboardData(data.data)
+        } catch {
+            setDashboardData(dummyStoreDashboardData)
+        } finally {
+            setLoading(false)
+        }
     }
 
     useEffect(() => {

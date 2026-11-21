@@ -4,9 +4,11 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import toast from "react-hot-toast"
 import Loading from "@/components/Loading"
+import { useUser } from "@/lib/auth"
 
 export default function CreateStore() {
 
+    const { user } = useUser()
     const [alreadySubmitted, setAlreadySubmitted] = useState(false)
     const [status, setStatus] = useState("")
     const [loading, setLoading] = useState(true)
@@ -27,22 +29,65 @@ export default function CreateStore() {
     }
 
     const fetchSellerStatus = async () => {
-        // Logic to check if the store is already submitted
-
-
-        setLoading(false)
+        try {
+            const userId = user?.id || 'user_prayash'
+            const res = await fetch('/api/store/status?userId=' + userId)
+            const data = await res.json()
+            if (data.success && data.store) {
+                setAlreadySubmitted(true)
+                setStatus(data.store.status)
+                if (data.store.status === 'approved') {
+                    setMessage('Your store has been approved! Redirecting to dashboard...')
+                    setTimeout(() => window.location.href = '/store', 3000)
+                } else if (data.store.status === 'rejected') {
+                    setMessage('Your store application was rejected. Please contact support.')
+                } else {
+                    setMessage('Your store application is under review. Our team will verify it shortly.')
+                }
+            }
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const onSubmitHandler = async (e) => {
         e.preventDefault()
-        // Logic to submit the store details
+        try {
+            let logo = ""
+            if (storeInfo.image instanceof File) {
+                logo = await new Promise((resolve) => {
+                    const reader = new FileReader()
+                    reader.onload = () => resolve(reader.result)
+                    reader.readAsDataURL(storeInfo.image)
+                })
+            } else if (typeof storeInfo.image === "string" && storeInfo.image) {
+                logo = storeInfo.image
+            } else {
+                logo = "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=200&h=200&q=80"
+            }
 
-
+            const currentUserId = user?.id || 'user_prayash'
+            const res = await fetch('/api/store/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...storeInfo, logo, userId: currentUserId }),
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.message)
+            setAlreadySubmitted(true)
+            setStatus('pending')
+            setMessage('Application submitted successfully! It is currently pending approval.')
+        } catch (err) {
+            toast.error(err.message)
+            throw err
+        }
     }
 
     useEffect(() => {
         fetchSellerStatus()
-    }, [])
+    }, [user])
 
     return !loading ? (
         <>

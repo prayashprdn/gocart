@@ -4,8 +4,11 @@ import Image from "next/image"
 import { useState } from "react"
 import { toast } from "react-hot-toast"
 
+import { useStore } from "@/components/store/StoreLayout"
+
 export default function StoreAddProduct() {
 
+    const { storeId } = useStore()
     const categories = ['Electronics', 'Clothing', 'Home & Kitchen', 'Beauty & Health', 'Toys & Games', 'Sports & Outdoors', 'Books & Media', 'Food & Drink', 'Hobbies & Crafts', 'Others']
 
     const [images, setImages] = useState({ 1: null, 2: null, 3: null, 4: null })
@@ -25,8 +28,43 @@ export default function StoreAddProduct() {
 
     const onSubmitHandler = async (e) => {
         e.preventDefault()
-        // Logic to add a product
-        
+        setLoading(true)
+        try {
+            // Upload images to a hosting service and get URLs.
+            // For now we convert to base64 data URLs as a placeholder.
+            const uploadedImages = await Promise.all(
+                Object.values(images)
+                    .filter(Boolean)
+                    .map((file) => new Promise((resolve) => {
+                        const reader = new FileReader()
+                        reader.onload = () => resolve(reader.result)
+                        reader.readAsDataURL(file)
+                    }))
+            )
+
+            if (uploadedImages.length === 0) {
+                toast.error("Please upload at least one image")
+                setLoading(false)
+                return
+            }
+            const effectiveStoreId = storeId || "seller_1"
+
+            const res = await fetch("/api/store/product/add", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...productInfo, images: uploadedImages, storeId: effectiveStoreId }),
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.message)
+
+            toast.success("Product added!")
+            setProductInfo({ name: "", description: "", mrp: 0, price: 0, category: "" })
+            setImages({ 1: null, 2: null, 3: null, 4: null })
+        } catch (err) {
+            toast.error(err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
 

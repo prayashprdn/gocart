@@ -3,24 +3,43 @@ import { useEffect, useState } from "react"
 import { toast } from "react-hot-toast"
 import Image from "next/image"
 import Loading from "@/components/Loading"
-import { productDummyData } from "@/assets/assets"
+import { productDummyData } from "@/assets/assets" // fallback only
+
+import { useStore } from "@/components/store/StoreLayout"
 
 export default function StoreManageProducts() {
 
+    const { storeId } = useStore()
     const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$'
 
     const [loading, setLoading] = useState(true)
     const [products, setProducts] = useState([])
 
     const fetchProducts = async () => {
-        setProducts(productDummyData)
-        setLoading(false)
+        try {
+            const effectiveStoreId = storeId || "seller_1"
+            const res = await fetch(`/api/store/product/list?storeId=${effectiveStoreId}`)
+            const data = await res.json()
+            if (data.success) setProducts(data.products)
+        } catch {
+            // fall back to dummy data during development
+            setProducts(productDummyData)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const toggleStock = async (productId) => {
-        // Logic to toggle the stock of a product
-
-
+        const res = await fetch("/api/store/product/toggle-stock", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productId }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
+        setProducts((prev) =>
+            prev.map((p) => (p.id === productId ? { ...p, inStock: data.product.inStock } : p))
+        )
     }
 
     useEffect(() => {

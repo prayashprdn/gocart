@@ -1,8 +1,11 @@
 'use client'
 import Link from "next/link"
+import { useUser, useClerk } from "@/lib/auth"
+import Image from "next/image"
 
 const StoreNavbar = () => {
-
+    const { user } = useUser()
+    const { signOut } = useClerk()
 
     return (
         <div className="flex items-center justify-between px-12 py-3 border-b border-slate-200 transition-all">
@@ -13,7 +16,9 @@ const StoreNavbar = () => {
                 </p>
             </Link>
             <div className="flex items-center gap-3">
-                <p>Hi, Seller</p>
+                {user?.imageUrl && <img src={user.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" />}
+                <p className="text-slate-600 text-sm">Hi, {user?.firstName ?? 'Seller'}</p>
+                <button onClick={() => signOut()} className="text-xs text-red-500 hover:underline">Sign Out</button>
             </div>
         </div>
     )

@@ -5,20 +5,27 @@ import Link from "next/link"
 import { ArrowRightIcon } from "lucide-react"
 import AdminNavbar from "./AdminNavbar"
 import AdminSidebar from "./AdminSidebar"
+import { useUser } from "@/lib/auth"
+
+// Add your Clerk user ID here to grant admin access
+const ADMIN_USER_IDS = process.env.NEXT_PUBLIC_ADMIN_USER_IDS?.split(",") ?? []
 
 const AdminLayout = ({ children }) => {
 
+    const { user, isSignedIn, isLoaded } = useUser()
     const [isAdmin, setIsAdmin] = useState(false)
     const [loading, setLoading] = useState(true)
 
-    const fetchIsAdmin = async () => {
-        setIsAdmin(true)
-        setLoading(false)
-    }
-
     useEffect(() => {
-        fetchIsAdmin()
-    }, [])
+        if (!isLoaded) return
+        if (isSignedIn) {
+            // In dev mode, allow Prayash or if ADMIN_USER_IDS is set, check it
+            if (ADMIN_USER_IDS.length === 0 || ADMIN_USER_IDS.includes(user?.id) || user?.id === 'user_prayash') {
+                setIsAdmin(true)
+            }
+        }
+        setLoading(false)
+    }, [isLoaded, isSignedIn, user])
 
     return loading ? (
         <Loading />

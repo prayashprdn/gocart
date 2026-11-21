@@ -20,14 +20,26 @@ export default function AdminCoupons() {
     })
 
     const fetchCoupons = async () => {
-        setCoupons(couponDummyData)
+        try {
+            const res = await fetch("/api/admin/coupon")
+            const data = await res.json()
+            if (data.success) setCoupons(data.coupons)
+        } catch {
+            setCoupons(couponDummyData)
+        }
     }
 
     const handleAddCoupon = async (e) => {
         e.preventDefault()
-        // Logic to add a coupon
-
-
+        const res = await fetch("/api/admin/coupon", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(newCoupon),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
+        setCoupons((prev) => [data.coupon, ...prev])
+        setNewCoupon({ code: "", description: "", discount: "", forNewUser: false, forMember: false, isPublic: false, expiresAt: new Date() })
     }
 
     const handleChange = (e) => {
@@ -35,9 +47,10 @@ export default function AdminCoupons() {
     }
 
     const deleteCoupon = async (code) => {
-        // Logic to delete a coupon
-
-
+        const res = await fetch(`/api/admin/coupon?code=${code}`, { method: "DELETE" })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
+        setCoupons((prev) => prev.filter((c) => c.code !== code))
     }
 
     useEffect(() => {

@@ -2,8 +2,15 @@
 import { XIcon } from "lucide-react"
 import { useState } from "react"
 import { toast } from "react-hot-toast"
+import { useDispatch } from "react-redux"
+import { addAddress } from "@/lib/features/address/addressSlice"
+
+import { useUser } from "@/lib/auth"
 
 const AddressModal = ({ setShowAddressModal }) => {
+
+    const { user } = useUser()
+    const dispatch = useDispatch()
 
     const [address, setAddress] = useState({
         name: '',
@@ -25,8 +32,20 @@ const AddressModal = ({ setShowAddressModal }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-
-        setShowAddressModal(false)
+        try {
+            const res = await fetch('/api/address/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...address, userId: user?.id || 'user_guest' }),
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.message)
+            dispatch(addAddress(data.address))
+            setShowAddressModal(false)
+        } catch (err) {
+            toast.error(err.message)
+            throw err
+        }
     }
 
     return (

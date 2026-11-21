@@ -3,7 +3,10 @@ import { useEffect, useState } from "react"
 import Loading from "@/components/Loading"
 import { orderDummyData } from "@/assets/assets"
 
+import { useStore } from "@/components/store/StoreLayout"
+
 export default function StoreOrders() {
+    const { storeId } = useStore()
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(true)
     const [selectedOrder, setSelectedOrder] = useState(null)
@@ -11,14 +14,29 @@ export default function StoreOrders() {
 
 
     const fetchOrders = async () => {
-       setOrders(orderDummyData)
-       setLoading(false)
+        try {
+            const effectiveStoreId = storeId || "seller_1"
+            const res = await fetch(`/api/store/order/list?storeId=${effectiveStoreId}`)
+            const data = await res.json()
+            if (data.success) setOrders(data.orders)
+        } catch {
+            setOrders(orderDummyData)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const updateOrderStatus = async (orderId, status) => {
-        // Logic to update the status of an order
-
-
+        const res = await fetch("/api/store/order/update-status", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId, status }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
+        setOrders((prev) =>
+            prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+        )
     }
 
     const openModal = (order) => {

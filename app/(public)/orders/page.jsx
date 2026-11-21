@@ -3,14 +3,30 @@ import PageTitle from "@/components/PageTitle"
 import { useEffect, useState } from "react";
 import OrderItem from "@/components/OrderItem";
 import { orderDummyData } from "@/assets/assets";
+import { useUser } from "@/lib/auth";
 
 export default function Orders() {
 
+    const { user } = useUser();
     const [orders, setOrders] = useState([]);
 
     useEffect(() => {
-        setOrders(orderDummyData)
-    }, []);
+        const loadOrders = async () => {
+            try {
+                const userId = user?.id || 'user_prayash';
+                const res = await fetch(`/api/order/list?userId=${userId}`)
+                const data = await res.json()
+                if (data.success && data.orders?.length > 0) {
+                    setOrders(data.orders)
+                } else {
+                    setOrders(orderDummyData)
+                }
+            } catch {
+                setOrders(orderDummyData)
+            }
+        }
+        loadOrders()
+    }, [user]);
 
     return (
         <div className="min-h-[70vh] mx-6">

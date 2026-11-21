@@ -18,20 +18,23 @@ const ProductDetails = ({ product }) => {
 
     const router = useRouter()
 
-    const [mainImage, setMainImage] = useState(product.images[0]);
+    const [mainImage, setMainImage] = useState(product?.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500');
 
     const addToCartHandler = () => {
         dispatch(addToCart({ productId }))
     }
 
-    const averageRating = product.rating.reduce((acc, item) => acc + item.rating, 0) / product.rating.length;
+    const ratings = Array.isArray(product?.rating) ? product.rating : [];
+    const averageRating = ratings.length > 0
+        ? ratings.reduce((acc, item) => acc + (item.rating || 0), 0) / ratings.length
+        : 0;
     
     return (
         <div className="flex max-lg:flex-col gap-12">
             <div className="flex max-sm:flex-col-reverse gap-3">
                 <div className="flex sm:flex-col gap-3">
-                    {product.images.map((image, index) => (
-                        <div key={index} onClick={() => setMainImage(product.images[index])} className="bg-slate-100 flex items-center justify-center size-26 rounded-lg group cursor-pointer">
+                    {(product?.images || []).map((image, index) => (
+                        <div key={index} onClick={() => setMainImage(image)} className="bg-slate-100 flex items-center justify-center size-26 rounded-lg group cursor-pointer">
                             <Image src={image} className="group-hover:scale-103 group-active:scale-95 transition" alt="" width={45} height={45} />
                         </div>
                     ))}

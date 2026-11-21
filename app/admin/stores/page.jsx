@@ -11,13 +11,29 @@ export default function AdminStores() {
     const [loading, setLoading] = useState(true)
 
     const fetchStores = async () => {
-        setStores(storesDummyData)
-        setLoading(false)
+        try {
+            const res = await fetch("/api/admin/store/list?status=approved")
+            const data = await res.json()
+            if (data.success) setStores(data.stores)
+        } catch {
+            setStores(storesDummyData)
+        } finally {
+            setLoading(false)
+        }
     }
 
     const toggleIsActive = async (storeId) => {
-        // Logic to toggle the status of a store
-
+        const store = stores.find((s) => s.id === storeId)
+        const res = await fetch("/api/admin/store/update", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ storeId, isActive: !store.isActive }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
+        setStores((prev) =>
+            prev.map((s) => (s.id === storeId ? { ...s, isActive: data.store.isActive } : s))
+        )
     }
 
     useEffect(() => {
